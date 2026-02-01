@@ -2,223 +2,151 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Palabreo</title>
-
+<title>Wordle ES PRO</title>
 <style>
-body {
-  margin: 0;
-  background: #121213;
-  color: white;
-  font-family: system-ui;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+* { box-sizing:border-box; margin:0; padding:0; }
+body { 
+  background:#121213; color:white; font-family:system-ui;
+  display:flex; justify-content:center; align-items:center; min-height:100vh;
 }
-
-#app {
-  width: 340px;
-  text-align: center;
-}
-
-h1 {
-  margin-bottom: 10px;
-  letter-spacing: 2px;
-}
-
-#stats {
-  font-size: 14px;
-  margin-bottom: 10px;
-  color: #aaa;
-}
-
-#grid {
-  margin: 10px 0;
-}
-
-.row {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 6px;
-}
-
+#app { width:340px; text-align:center; }
+h1 { margin-bottom:10px; letter-spacing:2px; }
+#stats { font-size:14px; margin-bottom:10px; color:#aaa; }
+#grid { margin:10px 0; }
+.row { display:flex; justify-content:center; margin-bottom:6px; }
 .tile {
-  width: 48px;
-  height: 48px;
-  margin: 2px;
-  border: 2px solid #3a3a3c;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26px;
+  width:48px; height:48px; margin:2px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:26px; font-weight:bold; text-transform:uppercase;
+  border:2px solid #3a3a3c; background:#121213;
+  transform-style: preserve-3d;
+}
+.tile.flip { animation: flip 0.6s forwards; }
+@keyframes flip {
+  0% { transform: rotateX(0deg); }
+  50% { transform: rotateX(90deg); background:#121213; }
+  100% { transform: rotateX(0deg); }
+}
+.green { background:#538d4e; border-color:#538d4e; }
+.yellow { background:#b59f3b; border-color:#b59f3b; }
+.gray { background:#3a3a3c; border-color:#3a3a3c; }
+#keyboard { margin-top:15px; }
+.keyrow { display:flex; justify-content:center; margin-bottom:6px; }
+.key { background:#818384; color:black; margin:3px; padding:10px; border-radius:4px; font-weight:bold; min-width:30px; cursor:pointer; user-select:none;}
+.key.wide { min-width:50px; }
+#mensaje {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.85);
+  padding: 20px 40px;
+  border-radius: 12px;
+  font-size: 24px;
   font-weight: bold;
-  text-transform: uppercase;
+  color: #fff;
+  text-align: center;
+  display: none;
+  z-index: 1000;
 }
-
-.filled {
-  border-color: #565758;
-}
-
-.green { background: #538d4e; border-color: #538d4e; }
-.yellow { background: #b59f3b; border-color: #b59f3b; }
-.gray { background: #3a3a3c; border-color: #3a3a3c; }
-
-#keyboard {
-  margin-top: 15px;
-}
-
-.keyrow {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 6px;
-}
-
-.key {
-  background: #818384;
-  color: black;
-  margin: 3px;
-  padding: 10px;
-  border-radius: 4px;
-  font-weight: bold;
-  min-width: 30px;
-}
-
-.key.wide { min-width: 50px; }
 </style>
 </head>
-
 <body>
 <div id="app">
-  <h1>WORDLE ES</h1>
-  <div id="stats">Racha: <span id="racha">0</span></div>
-
+  <h1>WORDLE ES PRO</h1>
+  <div id="stats">Racha: <span id="racha">0</span> | Intentos: <span id="intentos">0</span></div>
   <div id="grid"></div>
   <div id="keyboard"></div>
+  <div id="mensaje"></div>
 </div>
 
 <script>
-// ================= DATOS =================
+// ===== DATOS =====
 const palabras = ["ROSA","RATA","PATO","ROBO","ROCA","CASA","PERRO","GATO"];
 const hoy = Math.floor(Date.now() / 86400000);
 const palabra = palabras[hoy % palabras.length];
 const L = palabra.length;
 const MAX = 6;
 
-let intento = 0;
-let cursor = 0;
-let actual = "";
-
+// ===== ESTADÍSTICAS =====
 let racha = Number(localStorage.getItem("racha")) || 0;
+let intentosTotales = Number(localStorage.getItem("intentosTotales")) || 0;
 document.getElementById("racha").textContent = racha;
+document.getElementById("intentos").textContent = intentosTotales;
 
-// ================= GRID =================
+// ===== GRID PRE-CREADO =====
 const grid = document.getElementById("grid");
 const tiles = [];
-
-for (let r = 0; r < MAX; r++) {
-  const row = document.createElement("div");
-  row.className = "row";
-  tiles[r] = [];
-  for (let c = 0; c < L; c++) {
-    const t = document.createElement("div");
-    t.className = "tile";
-    row.appendChild(t);
-    tiles[r][c] = t;
+for(let r=0;r<MAX;r++){
+  const row = document.createElement("div"); row.className="row";
+  tiles[r]=[];
+  for(let c=0;c<L;c++){
+    const t=document.createElement("div"); t.className="tile"; row.appendChild(t); tiles[r][c]=t;
   }
   grid.appendChild(row);
 }
 
-// ================= TECLADO =================
-const layout = [
-  "QWERTYUIOP",
-  "ASDFGHJKL",
-  "↵ZXCVBNM⌫"
-];
-
-const keyboard = document.getElementById("keyboard");
-
-layout.forEach(row => {
-  const r = document.createElement("div");
-  r.className = "keyrow";
-  [...row].forEach(k => {
-    const key = document.createElement("div");
-    key.className = "key";
-    if (k === "↵" || k === "⌫") key.classList.add("wide");
-    key.textContent = k;
-    key.onclick = () => pressKey(k);
+// ===== TECLADO =====
+const layout=["QWERTYUIOP","ASDFGHJKL","↵ZXCVBNM⌫"];
+const keyboard=document.getElementById("keyboard");
+layout.forEach(row=>{
+  const r=document.createElement("div"); r.className="keyrow";
+  [...row].forEach(k=>{
+    const key=document.createElement("div"); key.className="key"; if(k==="↵"||k==="⌫") key.classList.add("wide");
+    key.textContent=k; key.onclick=()=>pressKey(k);
     r.appendChild(key);
   });
   keyboard.appendChild(r);
 });
 
-// ================= INPUT =================
-function pressKey(k) {
-  if (intento >= MAX) return;
-
-  if (k === "⌫") {
-    if (cursor > 0) {
-      cursor--;
-      actual = actual.slice(0, -1);
-      tiles[intento][cursor].textContent = "";
-      tiles[intento][cursor].classList.remove("filled");
-    }
-  }
-  else if (k === "↵") {
-    if (actual.length === L) evaluarIntento();
-  }
-  else {
-    if (actual.length < L) {
-      tiles[intento][cursor].textContent = k;
-      tiles[intento][cursor].classList.add("filled");
-      actual += k;
-      cursor++;
-    }
-  }
+// ===== MENSAJES ESTÉTICOS =====
+function mostrarMensaje(texto, duracion=1500){
+  const div = document.getElementById("mensaje");
+  div.textContent = texto;
+  div.style.display = "block";
+  setTimeout(()=>{
+    div.style.display = "none";
+  }, duracion);
 }
 
-// ================= LOGICA WORDLE =================
-function evaluarIntento() {
-  const res = Array(L).fill("gray");
-  const usadas = Array(L).fill(false);
+// ===== LOGICA =====
+let intento=0, cursor=0, actual="";
+function pressKey(k){
+  if(intento>=MAX) return;
+  if(k==="⌫"){ if(cursor>0){ cursor--; actual=actual.slice(0,-1); tiles[intento][cursor].textContent=""; } }
+  else if(k==="↵"){ if(actual.length===L) evaluarIntento(); }
+  else{ if(actual.length<L){ tiles[intento][cursor].textContent=k; actual+=k; cursor++; } }
+}
 
-  for (let i = 0; i < L; i++) {
-    if (actual[i] === palabra[i]) {
-      res[i] = "green";
-      usadas[i] = true;
-    }
-  }
+function evaluarIntento(){
+  const res=Array(L).fill("gray"), usadas=Array(L).fill(false);
+  for(let i=0;i<L;i++){ if(actual[i]===palabra[i]){ res[i]="green"; usadas[i]=true; } }
+  for(let i=0;i<L;i++){ if(res[i]==="green") continue; for(let j=0;j<L;j++){ if(!usadas[j]&&actual[i]===palabra[j]){ res[i]="yellow"; usadas[j]=true; break; } } }
 
-  for (let i = 0; i < L; i++) {
-    if (res[i] === "green") continue;
-    for (let j = 0; j < L; j++) {
-      if (!usadas[j] && actual[i] === palabra[j]) {
-        res[i] = "yellow";
-        usadas[j] = true;
-        break;
-      }
-    }
-  }
-
-  res.forEach((c, i) => {
-    tiles[intento][i].classList.add(c);
+  res.forEach((c,i)=>{
+    tiles[intento][i].classList.add("flip");
+    setTimeout(()=>{ tiles[intento][i].classList.add(c); }, i*200);
   });
 
-  if (actual === palabra) {
-    racha++;
-    localStorage.setItem("racha", racha);
-    setTimeout(() => alert("🟩 ¡Ganaste!"), 300);
-    intento = MAX;
-    return;
+  // Actualizar teclado
+  actual.split("").forEach((l,i)=>{
+    const btn=[...document.getElementsByClassName("key")].find(k=>k.textContent===l);
+    if(btn) { if(res[i]==="green") btn.style.background="#538d4e"; else if(res[i]==="yellow") btn.style.background="#b59f3b"; else btn.style.background="#3a3a3c"; }
+  });
+
+  if(actual===palabra){
+    racha++; intentosTotales++; localStorage.setItem("racha",racha); localStorage.setItem("intentosTotales",intentosTotales);
+    document.getElementById("racha").textContent=racha;
+    document.getElementById("intentos").textContent=intentosTotales;
+    setTimeout(()=>mostrarMensaje("🟩 ¡Ganaste!"), MAX*250);
+    intento=MAX; return;
   }
 
-  intento++;
-  cursor = 0;
-  actual = "";
-
-  if (intento >= MAX) {
-    racha = 0;
-    localStorage.setItem("racha", 0);
-    setTimeout(() => alert("❌ Era " + palabra), 300);
+  intento++; cursor=0; actual="";
+  if(intento>=MAX){ racha=0; intentosTotales++; localStorage.setItem("racha",racha); localStorage.setItem("intentosTotales",intentosTotales);
+    document.getElementById("racha").textContent=racha;
+    document.getElementById("intentos").textContent=intentosTotales;
+    setTimeout(()=>mostrarMensaje("❌ Era "+palabra), 300);
   }
 }
 </script>
