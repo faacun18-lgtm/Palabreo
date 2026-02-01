@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Palabreo</title>
+
+<style>
+body {
+  margin: 0;
+  background: #121213;
+  color: white;
+  font-family: system-ui;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+#app {
+  width: 340px;
+  text-align: center;
+}
+
+h1 {
+  margin-bottom: 10px;
+  letter-spacing: 2px;
+}
+
+#stats {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #aaa;
+}
+
+#grid {
+  margin: 10px 0;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.tile {
+  width: 48px;
+  height: 48px;
+  margin: 2px;
+  border: 2px solid #3a3a3c;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.filled {
+  border-color: #565758;
+}
+
+.green { background: #538d4e; border-color: #538d4e; }
+.yellow { background: #b59f3b; border-color: #b59f3b; }
+.gray { background: #3a3a3c; border-color: #3a3a3c; }
+
+#keyboard {
+  margin-top: 15px;
+}
+
+.keyrow {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.key {
+  background: #818384;
+  color: black;
+  margin: 3px;
+  padding: 10px;
+  border-radius: 4px;
+  font-weight: bold;
+  min-width: 30px;
+}
+
+.key.wide { min-width: 50px; }
+</style>
+</head>
+
+<body>
+<div id="app">
+  <h1>WORDLE ES</h1>
+  <div id="stats">Racha: <span id="racha">0</span></div>
+
+  <div id="grid"></div>
+  <div id="keyboard"></div>
+</div>
+
+<script>
+// ================= DATOS =================
+const palabras = ["ROSA","RATA","PATO","ROBO","ROCA","CASA","PERRO","GATO"];
+const hoy = Math.floor(Date.now() / 86400000);
+const palabra = palabras[hoy % palabras.length];
+const L = palabra.length;
+const MAX = 6;
+
+let intento = 0;
+let cursor = 0;
+let actual = "";
+
+let racha = Number(localStorage.getItem("racha")) || 0;
+document.getElementById("racha").textContent = racha;
+
+// ================= GRID =================
+const grid = document.getElementById("grid");
+const tiles = [];
+
+for (let r = 0; r < MAX; r++) {
+  const row = document.createElement("div");
+  row.className = "row";
+  tiles[r] = [];
+  for (let c = 0; c < L; c++) {
+    const t = document.createElement("div");
+    t.className = "tile";
+    row.appendChild(t);
+    tiles[r][c] = t;
+  }
+  grid.appendChild(row);
+}
+
+// ================= TECLADO =================
+const layout = [
+  "QWERTYUIOP",
+  "ASDFGHJKL",
+  "↵ZXCVBNM⌫"
+];
+
+const keyboard = document.getElementById("keyboard");
+
+layout.forEach(row => {
+  const r = document.createElement("div");
+  r.className = "keyrow";
+  [...row].forEach(k => {
+    const key = document.createElement("div");
+    key.className = "key";
+    if (k === "↵" || k === "⌫") key.classList.add("wide");
+    key.textContent = k;
+    key.onclick = () => pressKey(k);
+    r.appendChild(key);
+  });
+  keyboard.appendChild(r);
+});
+
+// ================= INPUT =================
+function pressKey(k) {
+  if (intento >= MAX) return;
+
+  if (k === "⌫") {
+    if (cursor > 0) {
+      cursor--;
+      actual = actual.slice(0, -1);
+      tiles[intento][cursor].textContent = "";
+      tiles[intento][cursor].classList.remove("filled");
+    }
+  }
+  else if (k === "↵") {
+    if (actual.length === L) evaluarIntento();
+  }
+  else {
+    if (actual.length < L) {
+      tiles[intento][cursor].textContent = k;
+      tiles[intento][cursor].classList.add("filled");
+      actual += k;
+      cursor++;
+    }
+  }
+}
+
+// ================= LOGICA WORDLE =================
+function evaluarIntento() {
+  const res = Array(L).fill("gray");
+  const usadas = Array(L).fill(false);
+
+  for (let i = 0; i < L; i++) {
+    if (actual[i] === palabra[i]) {
+      res[i] = "green";
+      usadas[i] = true;
+    }
+  }
+
+  for (let i = 0; i < L; i++) {
+    if (res[i] === "green") continue;
+    for (let j = 0; j < L; j++) {
+      if (!usadas[j] && actual[i] === palabra[j]) {
+        res[i] = "yellow";
+        usadas[j] = true;
+        break;
+      }
+    }
+  }
+
+  res.forEach((c, i) => {
+    tiles[intento][i].classList.add(c);
+  });
+
+  if (actual === palabra) {
+    racha++;
+    localStorage.setItem("racha", racha);
+    setTimeout(() => alert("🟩 ¡Ganaste!"), 300);
+    intento = MAX;
+    return;
+  }
+
+  intento++;
+  cursor = 0;
+  actual = "";
+
+  if (intento >= MAX) {
+    racha = 0;
+    localStorage.setItem("racha", 0);
+    setTimeout(() => alert("❌ Era " + palabra), 300);
+  }
+}
+</script>
+</body>
+</html>
